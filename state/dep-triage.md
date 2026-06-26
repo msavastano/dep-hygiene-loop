@@ -21,3 +21,4 @@
 | jest | 29.7.0→30.4.2 | none (major) | chore | flagged |
 | supertest | 6.3.4→7.2.2 | none (major) | chore | flagged |
 | js-yaml | transitive ≤4.1.1 | GHSA-h67p-54hq-rp68 | moderate | flagged |
+| lodash | 4.17.15→4.18.1 | GHSA-35jh-r3h4-6jhm (CORRECTS prior "skipped/none" row — first audit head truncated this high) | high | taken |
