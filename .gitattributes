@@ -1,0 +1,7 @@
+# Normalize line endings. Shell scripts and YAML MUST stay LF — CRLF breaks a
+# bash script (`\r` in the shebang/commands) and is noise in workflow files.
+# PowerShell scripts stay CRLF for native Windows tooling.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

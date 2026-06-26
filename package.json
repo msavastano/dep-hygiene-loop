@@ -1,0 +1,27 @@
+{
+  "name": "dep-hygiene-loop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A trivial Node app wrapped in a complete dependency-hygiene LOOP (the point of the repo).",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "jest --runInBand",
+    "lint": "eslint src test"
+  },
+  "keywords": [
+    "loop-engineering",
+    "dependency-hygiene",
+    "maker-checker"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "4.17.1",
+    "lodash": "4.17.15"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  }
+}

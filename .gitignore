@@ -1,0 +1,11 @@
+node_modules/
+npm-debug.log*
+coverage/
+
+# Worktrees created by scripts/handoff.* live as siblings of the repo, but if a
+# user points them inside the tree, keep them out of git.
+worktrees/
+
+# Local environment / secrets for any MCP connector (e.g. a GitHub PAT).
+.env
+.env.local

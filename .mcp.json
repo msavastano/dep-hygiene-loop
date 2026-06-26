@@ -1,0 +1,29 @@
+{
+  "$comment": [
+    "MCP connectors for the loop. The GitHub server lets the loop open PRs (never merge).",
+    "",
+    "WINDOWS GOTCHA — load-bearing: an npx-based MCP server MUST be launched through",
+    "the `cmd /c` wrapper on Windows. `npx` is a .cmd shim, and Windows will not spawn",
+    "it directly from an MCP client the way it spawns a real .exe — wire it as a bare",
+    "`npx ...` and the server fails SILENTLY (no error, the tools just never appear).",
+    "Wrapping as `cmd /c npx ...` is what makes it actually start.",
+    "",
+    "The non-Windows form is just `command: npx, args: [-y, ...]`. Shown below is the",
+    "Windows-correct form because this repo is developed on Windows."
+  ],
+
+  "mcpServers": {
+    "github": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
+      }
+    }
+  }
+}

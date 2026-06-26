@@ -1,0 +1,91 @@
+# SCHEDULING move — the cloud cron. This is the trigger that turns one run into
+# a loop: it fires every day at 06:00 UTC whether or not your machine is on.
+#
+# It runs the dep-triage skill, which opens PRs for safe bumps. It NEVER
+# auto-merges (see the Stop section of .claude/skills/dep-triage/SKILL.md and
+# loop.config.json -> policy.autoMerge=false). A human merges.
+name: dep-triage
+
+on:
+  schedule:
+    # 06:00 UTC daily. Same wall-clock intent as scripts/register-task.ps1.
+    - cron: "0 6 * * *"
+  # Manual button for testing / on-demand runs.
+  workflow_dispatch: {}
+
+# Least privilege: the loop may read code and open PRs. It is NOT granted any
+# merge capability — there is deliberately no path here that merges its own work.
+permissions:
+  contents: write
+  pull-requests: write
+
+# Never run two triage passes at once; they would collide on branches/state.
+concurrency:
+  group: dep-triage
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install (clean, from lockfile)
+        run: npm ci
+
+      # GUARDRAIL: lift the token caps out of loop.config.json into the job env
+      # so downstream steps can enforce them. Commented in config as "set
+      # assuming something spins idle overnight."
+      - name: Load loop budgets
+        run: |
+          echo "LOOP_PER_RUN_TOKENS=$(jq -r '.budget.perRunTokens' loop.config.json)" >> "$GITHUB_ENV"
+          echo "LOOP_DAILY_TOKENS=$(jq -r '.budget.dailyTokens' loop.config.json)"   >> "$GITHUB_ENV"
+          echo "LOOP_MAX_RETRIES=$(jq -r '.budget.maxRetries' loop.config.json)"     >> "$GITHUB_ENV"
+
+      # Produce real discovery inputs for the skill to read. `|| true` because
+      # `npm audit`/`npm outdated` exit non-zero when they FIND things — which is
+      # exactly the case we want to proceed on, not fail on.
+      - name: Discovery inputs
+        run: |
+          npm audit --json > audit.json || true
+          npm outdated --json > outdated.json || true
+          echo "::group::npm audit"; cat audit.json || true; echo "::endgroup::"
+          echo "::group::npm outdated"; cat outdated.json || true; echo "::endgroup::"
+
+      # Run the generator skill. It judges findings, writes ./state/dep-triage.md,
+      # creates worktrees, hands each bump to the dep-review evaluator, and opens
+      # a PR per PASS. The per-run token cap is passed through as a hard ceiling.
+      - name: Run dep-triage skill
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Invoke the discovery skill exactly as a human would with /dep-triage.
+          prompt: "/dep-triage"
+          # Hard per-run ceiling — wired from loop.config.json above.
+          max_tokens: ${{ env.LOOP_PER_RUN_TOKENS }}
+          # The loop opens PRs; it must not gain merge tools.
+          allowed_tools: "Bash,Read,Write,Edit"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOOP_MAX_RETRIES: ${{ env.LOOP_MAX_RETRIES }}
+
+      # Commit the cross-round memory back so the next cron run remembers today.
+      - name: Persist state
+        run: |
+          if ! git diff --quiet -- state/dep-triage.md; then
+            git config user.name "dep-triage-bot"
+            git config user.email "dep-triage-bot@users.noreply.github.com"
+            git add state/dep-triage.md
+            git commit -m "chore(dep-triage): update triage log [skip ci]"
+            git push
+          else
+            echo "No state change to persist."
+          fi

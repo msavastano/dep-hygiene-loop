@@ -1,0 +1,25 @@
+{
+  "$comment": "Guardrails for the dependency-hygiene loop. Budgets are set ASSUMING SOMETHING SPINS IDLE OVERNIGHT on a cron — an unattended loop with no ceiling is how a single bad turn burns a month of tokens before anyone notices. These caps are the brake.",
+
+  "budget": {
+    "perRunTokens": 200000,
+    "perRunTokens_comment": "Hard ceiling for a single triage run (one cron firing). Enough to read audit/outdated output, judge a handful of findings, and write state — not enough to spiral.",
+
+    "dailyTokens": 1000000,
+    "dailyTokens_comment": "Sum across all runs in a calendar day. The cron fires once at 06:00, but manual re-runs and retries share this pool. When it's gone, the loop stops until tomorrow.",
+
+    "maxRetries": 2,
+    "maxRetries_comment": "Per finding. If a bump fails verification (npm test / lint / audit) this many times, stop retrying and route it to ./inbox/ for a human. Retrying forever is how mistakes survive long enough to compound."
+  },
+
+  "policy": {
+    "autoMerge": false,
+    "autoMerge_comment": "NEVER true. PRs are opened for humans; the loop does not merge its own work.",
+
+    "allowMajorBumps": false,
+    "allowMajorBumps_comment": "Major / breaking bumps are flagged only, never attempted unattended. See the Stop section of .claude/skills/dep-triage/SKILL.md.",
+
+    "uncertainGoesTo": "./inbox/",
+    "uncertainGoesTo_comment": "Anything below full confidence becomes a file in ./inbox/, not a PR."
+  }
+}
